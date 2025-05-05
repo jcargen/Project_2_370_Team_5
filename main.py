@@ -20,7 +20,7 @@ class FretboardGrid(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.layout = QGridLayout()
-        self.layout.setSpacing(3)  # Slightly increased spacing
+        self.layout.setSpacing(3)
         self.setLayout(self.layout)
         
         # Default values
@@ -32,9 +32,25 @@ class FretboardGrid(QWidget):
         self.note_labels = []
         self.highlighted_notes = set()  # Store which notes should be highlighted
         self.string_tuning_combos = []  # Store references to tuning combo boxes
+        self.note_clicked_callback = None  # Callback for note clicks
         
         self.initialize_grid()
-        
+    
+    def get_note_style(self, fret, note):
+        # Professional color scheme logic for dynamic updates
+        note_even = "background-color: #b8c1ec; color: #232946; border-radius: 4px;"
+        note_odd = "background-color: #fffffe; color: #232946; border-radius: 4px;"
+        note_open = "background-color: #eebbc3; color: #232946; font-weight: bold; border-radius: 4px;"
+        note_highlight = "background-color: #f9bc60; color: #232946; font-weight: bold; border-radius: 4px; border: 2px solid #232946;"
+        if fret == 0:
+            return note_open
+        elif note in self.highlighted_notes:
+            return note_highlight
+        elif fret % 2 == 0:
+            return note_even
+        else:
+            return note_odd
+
     def initialize_grid(self):
         # Clear existing grid items
         while self.layout.count():
@@ -44,190 +60,174 @@ class FretboardGrid(QWidget):
                 widget.deleteLater()
         
         self.note_labels = []
-        self.string_tuning_combos = []  # Reset tuning combos list
-        
-        # Header styling - softer colors
-        header_style = "background-color: #3498db; color: #ecf0f1; font-weight: bold; border-radius: 3px; padding: 2px;"
-        button_style = "background-color: #3498db; color: white; font-weight: bold; border-radius: 3px; padding: 2px; min-width: 25px; min-height: 25px;"
-        
-        # Create header row for fret numbers
+        self.string_tuning_combos = []
+
+        # --- Professional, modern color palette ---
+        header_style = (
+            "background-color: #232946;"
+            "color: #fffffe;"
+            "font-weight: bold;"
+            "border-radius: 6px;"
+            "padding: 6px;"
+            "font-size: 12pt;"
+            "letter-spacing: 1px;"
+        )
+        button_style = (
+            "background-color: #eebbc3;"
+            "color: #232946;"
+            "font-weight: bold;"
+            "border-radius: 6px;"
+            "padding: 4px 10px;"
+            "font-size: 12pt;"
+            "min-width: 32px;"
+            "min-height: 32px;"
+            "border: none;"
+        )
+        button_style_hover = (
+            "QPushButton:hover {"
+            "background-color: #d4939d;"
+            "color: #fffffe;"
+            "}"
+        )
+        combo_style = (
+            "background-color: #fffffe;"
+            "color: #232946;"
+            "border: 1px solid #b8c1ec;"
+            "border-radius: 4px;"
+            "font-size: 11pt;"
+            "padding: 2px 8px;"
+        )
+
+        # --- Header row for fret numbers ---
         fret_header = QLabel("String/Fret")
         fret_header.setStyleSheet(header_style)
         fret_header.setAlignment(Qt.AlignCenter)
         self.layout.addWidget(fret_header, 0, 0)
-        
+
         for fret in range(self.fret_count + 1):
             fret_label = QLabel(str(fret))
             fret_label.setStyleSheet(header_style)
             fret_label.setAlignment(Qt.AlignCenter)
             self.layout.addWidget(fret_label, 0, fret + 1)
-        
-        # Add +/- buttons for frets (columns)
+
+        # --- Fret +/- controls (columns) ---
         fret_control_widget = QWidget()
         fret_control_layout = QHBoxLayout(fret_control_widget)
         fret_control_layout.setContentsMargins(2, 2, 2, 2)
-        fret_control_layout.setSpacing(2)
-        
+        fret_control_layout.setSpacing(6)
+
         add_fret_btn = QPushButton("+")
-        add_fret_btn.setStyleSheet(button_style)
+        add_fret_btn.setStyleSheet(button_style + button_style_hover)
         add_fret_btn.setToolTip("Add fret")
         add_fret_btn.clicked.connect(self.add_fret)
         fret_control_layout.addWidget(add_fret_btn)
-        
+
         remove_fret_btn = QPushButton("-")
-        remove_fret_btn.setStyleSheet(button_style)
+        remove_fret_btn.setStyleSheet(button_style + button_style_hover)
         remove_fret_btn.setToolTip("Remove fret")
         remove_fret_btn.clicked.connect(self.remove_fret)
         fret_control_layout.addWidget(remove_fret_btn)
-        
+
         self.layout.addWidget(fret_control_widget, 0, self.fret_count + 2)
-        
-        # Create rows for each string
+
+        # --- String rows ---
         for string_idx in range(self.string_count):
             string_num = string_idx + 1
-            
-            # Create a container for string number and tuning combo
+
             string_container = QWidget()
             string_layout = QHBoxLayout(string_container)
             string_layout.setContentsMargins(2, 2, 2, 2)
-            string_layout.setSpacing(3)
-            
-            # String number label
+            string_layout.setSpacing(6)
+
             string_label = QLabel(f"String {string_num}")
             string_label.setStyleSheet(header_style)
             string_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             string_layout.addWidget(string_label)
-            
-            # Tuning combo box - fix contrast issue with better styling
+
             tuning_combo = QComboBox()
             tuning_combo.addItems(["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"])
             tuning = self.tuning[string_idx] if string_idx < len(self.tuning) else "E"
             tuning_combo.setCurrentText(tuning)
-            tuning_combo.setStyleSheet("background-color: #f0f0f0; color: #333333; border: 1px solid #999999;")
+            tuning_combo.setStyleSheet(combo_style)
             tuning_combo.currentTextChanged.connect(lambda note, idx=string_idx: self.update_tuning(idx, note))
             string_layout.addWidget(tuning_combo)
-            
+
             self.string_tuning_combos.append(tuning_combo)
             self.layout.addWidget(string_container, string_idx + 1, 0)
-            
-            # Add note for each fret on this string
+
             string_notes = []
             for fret in range(self.fret_count + 1):
                 if string_idx < len(self.tuning):
                     note = self.note_calculator.get_note_at_fret(self.tuning[string_idx], fret)
                 else:
                     note = self.note_calculator.get_note_at_fret("E", fret)
-                    
+
                 note_frame = QFrame()
                 note_frame.setFrameStyle(QFrame.Box | QFrame.Plain)
                 note_frame.setLineWidth(1)
-                
                 note_layout = QVBoxLayout(note_frame)
                 note_layout.setContentsMargins(3, 3, 3, 3)
                 note_layout.setSpacing(0)
-                
+
                 note_label = QLabel(note)
                 note_label.setAlignment(Qt.AlignCenter)
                 note_label.setMinimumWidth(35)
                 note_label.setMinimumHeight(25)
-                
-                # Better color scheme with less contrast
-                if fret % 2 == 0:
-                    base_style = "background-color: #f0f0f0; color: #333333;"
-                else:
-                    base_style = "background-color: #e0e0e0; color: #333333;"
-                
-                # Special style for open strings (fret 0) - softer blue
-                if fret == 0:
-                    base_style = "background-color: #b3d9ff; color: #333333;"
-                
-                # Highlight with a more readable color
-                if note in self.highlighted_notes:
-                    base_style = "background-color: #2ecc71; color: #ffffff; font-weight: bold;"
-                
-                note_label.setStyleSheet(base_style)
+                note_label.setStyleSheet(self.get_note_style(fret, note))
                 note_layout.addWidget(note_label)
-                
                 self.layout.addWidget(note_frame, string_idx + 1, fret + 1)
                 string_notes.append(note_label)
+                # --- Make note clickable ---
+                note_label.setCursor(Qt.PointingHandCursor)
+                note_label.mousePressEvent = self._make_note_click_handler(note)
             self.note_labels.append(string_notes)
 
-        # Place the string +/- controls under the last string (bottom left)
+        # --- String +/- controls under last string ---
         string_control_widget = QWidget()
         string_control_layout = QHBoxLayout(string_control_widget)
         string_control_layout.setContentsMargins(2, 2, 2, 2)
-        string_control_layout.setSpacing(2)
+        string_control_layout.setSpacing(6)
 
         add_string_btn = QPushButton("+")
-        add_string_btn.setStyleSheet("background-color: #3498db; color: white; font-weight: bold; border-radius: 3px; min-width: 25px; min-height: 25px;")
+        add_string_btn.setStyleSheet(button_style + button_style_hover)
         add_string_btn.setToolTip("Add string")
         add_string_btn.clicked.connect(self.add_string)
         string_control_layout.addWidget(add_string_btn)
 
         remove_string_btn = QPushButton("-")
-        remove_string_btn.setStyleSheet("background-color: #3498db; color: white; font-weight: bold; border-radius: 3px; min-width: 25px; min-height: 25px;")
+        remove_string_btn.setStyleSheet(button_style + button_style_hover)
         remove_string_btn.setToolTip("Remove string")
         remove_string_btn.clicked.connect(self.remove_string)
         string_control_layout.addWidget(remove_string_btn)
 
-        # Place the widget in the first column, after the last string row
         self.layout.addWidget(string_control_widget, self.string_count + 1, 0)
     
+    def set_note_clicked_callback(self, callback):
+        self.note_clicked_callback = callback
+
     def update_tuning(self, string_idx, note):
         if string_idx < self.string_count and string_idx < len(self.tuning):
             self.tuning[string_idx] = note
-            
-            # Update the combo box if needed (to avoid infinite recursion)
             if string_idx < len(self.string_tuning_combos):
                 combo = self.string_tuning_combos[string_idx]
                 if combo.currentText() != note:
                     combo.setCurrentText(note)
-            
-            # Update all notes on this string
             for fret in range(self.fret_count + 1):
                 note_at_fret = self.note_calculator.get_note_at_fret(note, fret)
                 self.note_labels[string_idx][fret].setText(note_at_fret)
-                
-                # Update highlighting
-                if fret % 2 == 0:
-                    base_style = "background-color: #f0f0f0; color: #333333;"
-                else:
-                    base_style = "background-color: #e0e0e0; color: #333333;"
-                
-                if fret == 0:
-                    base_style = "background-color: #b3d9ff; color: #333333;"
-                
-                if note_at_fret in self.highlighted_notes:
-                    base_style = "background-color: #2ecc71; color: #ffffff; font-weight: bold;"
-                    
-                self.note_labels[string_idx][fret].setStyleSheet(base_style)
-    
+                # Use dynamic color scheme
+                self.note_labels[string_idx][fret].setStyleSheet(self.get_note_style(fret, note_at_fret))
+
     def update_highlighted_notes(self, note, is_selected):
         if is_selected:
             self.highlighted_notes.add(note)
         elif note in self.highlighted_notes:
             self.highlighted_notes.remove(note)
-        
-        # Update all labels
         for string_idx in range(self.string_count):
             for fret in range(self.fret_count + 1):
                 note_at_fret = self.note_labels[string_idx][fret].text()
-                
-                # Set base style based on fret position
-                if fret % 2 == 0:
-                    base_style = "background-color: #f0f0f0; color: #333333;"
-                else:
-                    base_style = "background-color: #e0e0e0; color: #333333;"
-                
-                if fret == 0:
-                    base_style = "background-color: #b3d9ff; color: #333333;"
-                
-                # Apply highlight with better color
-                if note_at_fret in self.highlighted_notes:
-                    base_style = "background-color: #2ecc71; color: #ffffff; font-weight: bold;"
-                
-                self.note_labels[string_idx][fret].setStyleSheet(base_style)
-    
+                self.note_labels[string_idx][fret].setStyleSheet(self.get_note_style(fret, note_at_fret))
+
     def add_string(self):
         """Add a new string to the fretboard"""
         if self.string_count < 12:  # Maximum limit
@@ -252,6 +252,12 @@ class FretboardGrid(QWidget):
         if self.fret_count > 5:  # Minimum limit
             self.fret_count -= 1
             self.initialize_grid()
+
+    def _make_note_click_handler(self, note):
+        def handler(event):
+            if self.note_clicked_callback:
+                self.note_clicked_callback(note)
+        return handler
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -346,7 +352,7 @@ class MainWindow(QMainWindow):
         highlight_group = QGroupBox("Highlighting")
         highlight_layout = QVBoxLayout(highlight_group)
         
-        # Preset dropdown with improved coloring and +/- for string control
+        # Preset dropdown with improved coloring (NO +/- here)
         preset_layout = QHBoxLayout()
         preset_label = QLabel("Scale Presets:")
         preset_label.setStyleSheet("color: #ffffff; font-weight: bold;")
@@ -373,26 +379,11 @@ class MainWindow(QMainWindow):
             }
         """)
         preset_layout.addWidget(self.preset_combo)
-
-        # Add +/- buttons for string control at the top
-        add_string_btn = QPushButton("+")
-        add_string_btn.setStyleSheet("background-color: #3498db; color: white; font-weight: bold; border-radius: 3px; min-width: 25px; min-height: 25px;")
-        add_string_btn.setToolTip("Add string")
-        add_string_btn.clicked.connect(lambda: self.fretboard.add_string())
-        preset_layout.addWidget(add_string_btn)
-
-        remove_string_btn = QPushButton("-")
-        remove_string_btn.setStyleSheet("background-color: #3498db; color: white; font-weight: bold; border-radius: 3px; min-width: 25px; min-height: 25px;")
-        remove_string_btn.setToolTip("Remove string")
-        remove_string_btn.clicked.connect(lambda: self.fretboard.remove_string())
-        preset_layout.addWidget(remove_string_btn)
-
-        # Add clear button
+        # Remove add_string_btn and remove_string_btn from here!
         clear_button = QPushButton("Clear Highlighting")
         clear_button.setStyleSheet("background-color: #e74c3c; color: white; font-weight: bold; border-radius: 3px; min-width: 80px;")
         clear_button.clicked.connect(self.clear_highlighted_notes)
         preset_layout.addWidget(clear_button)
-        
         preset_layout.addStretch()
         highlight_layout.addLayout(preset_layout)
         
@@ -417,9 +408,9 @@ class MainWindow(QMainWindow):
         
         # Create the fretboard visualization
         self.fretboard = FretboardGrid()
+        self.fretboard.set_note_clicked_callback(self.handle_note_clicked)
         fretboard_wrapper = QVBoxLayout()
         fretboard_wrapper.addWidget(self.fretboard)
-        
         self.layout.addLayout(fretboard_wrapper)
         self.layout.addStretch(1)
     
@@ -477,6 +468,12 @@ class MainWindow(QMainWindow):
         """Clear all highlighted notes"""
         for checkbox in self.note_checkboxes.values():
             checkbox.setChecked(False)
+
+    def handle_note_clicked(self, note):
+        # Check the corresponding checkbox if not already checked
+        checkbox = self.note_checkboxes.get(note)
+        if checkbox and not checkbox.isChecked():
+            checkbox.setChecked(True)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
