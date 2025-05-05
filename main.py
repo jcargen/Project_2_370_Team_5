@@ -151,6 +151,27 @@ class FretboardGrid(QWidget):
                 self.layout.addWidget(note_frame, string_idx + 1, fret + 1)
                 string_notes.append(note_label)
             self.note_labels.append(string_notes)
+
+        # Place the string +/- controls under the last string (bottom left)
+        string_control_widget = QWidget()
+        string_control_layout = QHBoxLayout(string_control_widget)
+        string_control_layout.setContentsMargins(2, 2, 2, 2)
+        string_control_layout.setSpacing(2)
+
+        add_string_btn = QPushButton("+")
+        add_string_btn.setStyleSheet("background-color: #3498db; color: white; font-weight: bold; border-radius: 3px; min-width: 25px; min-height: 25px;")
+        add_string_btn.setToolTip("Add string")
+        add_string_btn.clicked.connect(self.add_string)
+        string_control_layout.addWidget(add_string_btn)
+
+        remove_string_btn = QPushButton("-")
+        remove_string_btn.setStyleSheet("background-color: #3498db; color: white; font-weight: bold; border-radius: 3px; min-width: 25px; min-height: 25px;")
+        remove_string_btn.setToolTip("Remove string")
+        remove_string_btn.clicked.connect(self.remove_string)
+        string_control_layout.addWidget(remove_string_btn)
+
+        # Place the widget in the first column, after the last string row
+        self.layout.addWidget(string_control_widget, self.string_count + 1, 0)
     
     def update_tuning(self, string_idx, note):
         if string_idx < self.string_count and string_idx < len(self.tuning):
@@ -249,18 +270,22 @@ class MainWindow(QMainWindow):
                 border-radius: 5px;
                 margin-top: 12px;
                 font-weight: bold;
-                background-color: #ffffff;
+                background-color: #2c3e50;
+                color: #ffffff;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 5px;
+                color: #ffffff;
             }
             QLabel {
                 font-size: 10pt;
+                color: #ffffff;
             }
             QCheckBox {
                 spacing: 5px;
+                color: #ffffff;
             }
             QCheckBox::indicator {
                 width: 16px;
@@ -280,11 +305,15 @@ class MainWindow(QMainWindow):
                 min-height: 25px;
                 min-width: 70px;
                 padding-right: 10px;
+                background-color: #e0e0e0;
+                color: #333333;
             }
             QComboBox {
                 min-height: 25px;
                 min-width: 70px;
                 padding: 5px;
+                background-color: #e0e0e0;
+                color: #333333;
             }
         """)
         
@@ -317,16 +346,50 @@ class MainWindow(QMainWindow):
         highlight_group = QGroupBox("Highlighting")
         highlight_layout = QVBoxLayout(highlight_group)
         
-        # Preset dropdown
+        # Preset dropdown with improved coloring and +/- for string control
         preset_layout = QHBoxLayout()
-        preset_layout.addWidget(QLabel("Scale Presets:"))
+        preset_label = QLabel("Scale Presets:")
+        preset_label.setStyleSheet("color: #ffffff; font-weight: bold;")
+        preset_layout.addWidget(preset_label)
         self.preset_combo = QComboBox()
-        self.preset_combo.addItems(["Select a scale...", "C Major", "A Minor", "G Major", "E Minor", "F Major", "D Minor"])
+        self.preset_combo.addItems([
+            "Select a scale...", "C Major", "A Minor", "G Major", "E Minor", "F Major", "D Minor"
+        ])
         self.preset_combo.currentTextChanged.connect(self.handle_preset_change)
+        self.preset_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #2980b9;
+                color: #ffffff;
+                min-height: 25px;
+                min-width: 120px;
+                padding: 5px;
+                border-radius: 4px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #2c3e50;
+                color: #ffffff;
+                selection-background-color: #3498db;
+                selection-color: #ffffff;
+            }
+        """)
         preset_layout.addWidget(self.preset_combo)
-        
+
+        # Add +/- buttons for string control at the top
+        add_string_btn = QPushButton("+")
+        add_string_btn.setStyleSheet("background-color: #3498db; color: white; font-weight: bold; border-radius: 3px; min-width: 25px; min-height: 25px;")
+        add_string_btn.setToolTip("Add string")
+        add_string_btn.clicked.connect(lambda: self.fretboard.add_string())
+        preset_layout.addWidget(add_string_btn)
+
+        remove_string_btn = QPushButton("-")
+        remove_string_btn.setStyleSheet("background-color: #3498db; color: white; font-weight: bold; border-radius: 3px; min-width: 25px; min-height: 25px;")
+        remove_string_btn.setToolTip("Remove string")
+        remove_string_btn.clicked.connect(lambda: self.fretboard.remove_string())
+        preset_layout.addWidget(remove_string_btn)
+
         # Add clear button
         clear_button = QPushButton("Clear Highlighting")
+        clear_button.setStyleSheet("background-color: #e74c3c; color: white; font-weight: bold; border-radius: 3px; min-width: 80px;")
         clear_button.clicked.connect(self.clear_highlighted_notes)
         preset_layout.addWidget(clear_button)
         
@@ -372,7 +435,7 @@ class MainWindow(QMainWindow):
             "E Minor": ["E", "F#", "G", "A", "B", "C", "D"],
             "F Major": ["F", "G", "A", "A#", "C", "D", "E"],
             "D Minor": ["D", "E", "F", "G", "A", "A#", "C"]
-        }
+        };
         
         if preset_name in scale_notes:
             self.add_predefined_key(preset_name, scale_notes[preset_name])
@@ -386,7 +449,7 @@ class MainWindow(QMainWindow):
         # First, update the fretboard
         self.fretboard.update_string_count(count)
         
-        # No need to update tuning combos in the top area anymore since they're removed
+        # No need to update tuning combos in the top area anymore since they'reremoved
     @Slot(int)
     def update_fret_count(self, count):
         self.fretboard.update_fret_count(count)
