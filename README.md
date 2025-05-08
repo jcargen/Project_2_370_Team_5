@@ -24,19 +24,4 @@ A simple tool to visualize notes on a string instrument fretboard. Useful for le
    ```
    python main.py
    ```
-
-## Usage
-
-- All configuration options are available in the top panel
-- Adjust the number of strings and frets using the spinboxes
-- Set the tuning for each string using the dropdown menus
-- Select scale presets from the dropdown or manually select notes to highlight
-- The fretboard visualization shows tuning information with each string and updates automatically
-
-## Visual Features
-
-- Improved spacing and layout organization
-- Lower contrast colors for better readability
-- String tuning information integrated with string labels
-- Green highlighting for better visibility of selected notes
-- Consistent styling throughout the application
+   
